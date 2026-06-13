@@ -1,0 +1,76 @@
+{
+  "expo": {
+    "name": "ReMine Citizen Track",
+    "slug": "remine-citizen-track",
+    "scheme": "remine",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2ecc71"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.remine.citizentrack",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#2ecc71"
+      },
+      "package": "com.remine.citizentrack",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Autoriser ReMine Citizen Track à accéder à votre caméra pour documenter les problèmes environnementaux."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Autoriser ReMine Citizen Track à utiliser votre position pour localiser précisément les signalements sur la carte."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'application a besoin d'accéder à vos photos pour vous permettre d'ajouter des images aux signalements."
+        }
+      ],
+      "expo-secure-store",
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "13e5fcd3-cd7e-45e7-9cd7-96741e02a994"
+      }
+    },
+    "owner": "remine-citizen-tracks-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/13e5fcd3-cd7e-45e7-9cd7-96741e02a994"
+    }
+  }
+}
