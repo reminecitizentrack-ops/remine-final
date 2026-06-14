@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -64,7 +65,42 @@ export default function ResetPasswordScreen({ route, navigation }) {
   const styles = React.useMemo(() => createStyles(colors), [colors]);
   const { verifyResetToken, confirmPasswordReset } = useAuth();
 
-  const { email = '', token = '' } = route?.params || {};
+  const [email, setEmail] = useState(route?.params?.email || '');
+  const [token, setToken] = useState(route?.params?.token || '');
+  const [paramsReady, setParamsReady] = useState(!!(route?.params?.email && route?.params?.token));
+
+  // Si route.params est vide (deep link non parsé par React Navigation),
+  // on lit directement l'URL d'ouverture via Linking
+  useEffect(() => {
+    if (email && token) { setParamsReady(true); return; }
+
+    const extractParams = (url) => {
+      if (!url) return;
+      try {
+        // Supporte remine://reset-password?token=...&email=...
+        // et https://remine-dashboard.vercel.app/reset-password?token=...&email=...
+        const queryString = url.includes('?') ? url.split('?')[1] : '';
+        const params = {};
+        queryString.split('&').forEach(pair => {
+          const [k, v] = pair.split('=');
+          if (k && v) params[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' '));
+        });
+        if (params.token) setToken(params.token);
+        if (params.email) setEmail(params.email);
+        if (params.token && params.email) setParamsReady(true);
+      } catch {}
+    };
+
+    // URL d'ouverture initiale (app fermée → ouverte via le lien)
+    Linking.getInitialURL().then(url => {
+      if (url) extractParams(url);
+      else setParamsReady(true); // pas d'URL → affiche "lien invalide"
+    });
+
+    // URL reçue si l'app était déjà ouverte
+    const sub = Linking.addEventListener('url', ({ url }) => extractParams(url));
+    return () => sub?.remove?.();
+  }, []);
 
   const [checking, setChecking]     = useState(true);
   const [tokenValid, setTokenValid] = useState(null); // null | true | false
@@ -80,6 +116,8 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
   // Vérifier le token au chargement
   useEffect(() => {
+    if (!paramsReady) return; // attendre que les params soient lus
+
     let active = true;
     (async () => {
       if (!email || !token) {
@@ -101,7 +139,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
       setChecking(false);
     })();
     return () => { active = false; };
-  }, [email, token]);
+  }, [email, token, paramsReady]);
 
   const rules = {
     length: password.length >= 8,
@@ -123,12 +161,14 @@ export default function ResetPasswordScreen({ route, navigation }) {
     }
   };
 
-  // ── État : vérification du token en cours ─────────────────────────────────
-  if (checking) {
+  // ── État : lecture de l'URL en cours ──────────────────────────────────────
+  if (!paramsReady || checking) {
     return (
       <View style={styles.centerContent}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Vérification du lien...</Text>
+        <Text style={styles.loadingText}>
+          {!paramsReady ? 'Lecture du lien…' : 'Vérification du lien…'}
+        </Text>
       </View>
     );
   }
