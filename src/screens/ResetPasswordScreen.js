@@ -1,145 +1,105 @@
-// src/screens/ResetPasswordScreen.js — Réinitialisation de mot de passe (deep link)
+// src/screens/ResetPasswordScreen.js
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Linking,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, ScrollView, KeyboardAvoidingView,
+  Platform, ActivityIndicator, Linking,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-const createStyles = (colors) => StyleSheet.create({
-  container:     { flex: 1, backgroundColor: colors.background },
-  scrollContent: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-  centerContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+// Appels API directs (pas via AuthContext pour éviter le cycle de dépendances)
+const API_BASE = 'https://remine-backend.onrender.com/api';
 
-  header:    { alignItems: 'center', marginBottom: 28 },
-  icon:      { fontSize: 48, marginBottom: 12 },
-  title:     { fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 8, color: colors.primary, letterSpacing: -0.5 },
-  subtitle:  { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 21 },
-  emailHighlight: { fontWeight: '700', color: colors.textPrimary },
+async function apiVerifyToken(email, token) {
+  try {
+    const res = await fetch(
+      `${API_BASE}/auth/verify-reset-token?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`
+    );
+    return await res.json();
+  } catch {
+    return { success: false, error: 'Erreur de connexion au serveur.' };
+  }
+}
 
-  form: { backgroundColor: colors.surface, padding: 24, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 10, elevation: 4 },
-
-  inputGroup: { marginBottom: 18 },
-  label:      { fontSize: 13, fontWeight: '600', marginBottom: 7, color: colors.textPrimary, letterSpacing: 0.2 },
-  inputWrap:  { position: 'relative' },
-  input:      { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, padding: 14, paddingRight: 50, fontSize: 15, color: colors.textPrimary },
-  inputError: { borderColor: colors.danger, backgroundColor: colors.dangerLight },
-  toggleBtn:  { position: 'absolute', right: 12, top: 12, padding: 4 },
-  toggleText: { fontSize: 18 },
-
-  rules:     { marginTop: 4, marginBottom: 4 },
-  rule:      { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  ruleIcon:  { fontSize: 13, marginRight: 6, width: 16 },
-  ruleText:  { fontSize: 12, color: colors.textSecondary },
-  ruleTextOk:{ color: colors.primary, fontWeight: '600' },
-
-  errorBox:  { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.dangerLight, borderRadius: 10, padding: 12, marginBottom: 18 },
-  errorIcon: { fontSize: 18, marginRight: 10 },
-  errorText: { flex: 1, color: colors.danger, fontSize: 13 },
-
-  button:         { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 6, shadowColor: colors.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 4 },
-  buttonDisabled: { backgroundColor: colors.border, shadowOpacity: 0, elevation: 0 },
-  buttonText:     { color: colors.surface, fontSize: 16, fontWeight: '700' },
-
-  secondaryBtn:     { padding: 14, alignItems: 'center', marginTop: 8 },
-  secondaryBtnText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-
-  successIcon:  { fontSize: 64, marginBottom: 16 },
-  successTitle: { fontSize: 22, fontWeight: '800', color: colors.primary, marginBottom: 10, textAlign: 'center' },
-  successText:  { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 28 },
-
-  loadingText: { fontSize: 14, color: colors.textSecondary, marginTop: 12, textAlign: 'center' },
-});
+async function apiConfirmReset(email, token, newPassword) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/confirm-reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, token, newPassword }),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, error: 'Erreur de connexion au serveur.' };
+  }
+}
 
 export default function ResetPasswordScreen({ route, navigation }) {
   const { colors } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors), [colors]);
-  const { verifyResetToken, confirmPasswordReset } = useAuth();
+  const styles = makeStyles(colors);
 
-  const [email, setEmail] = useState(route?.params?.email || '');
-  const [token, setToken] = useState(route?.params?.token || '');
+  const [email, setEmail]           = useState(route?.params?.email || '');
+  const [token, setToken]           = useState(route?.params?.token || '');
   const [paramsReady, setParamsReady] = useState(!!(route?.params?.email && route?.params?.token));
 
-  // Si route.params est vide (deep link non parsé par React Navigation),
-  // on lit directement l'URL d'ouverture via Linking
+  const [checking, setChecking]     = useState(true);
+  const [tokenValid, setTokenValid] = useState(null);
+  const [tokenError, setTokenError] = useState('');
+
+  const [password, setPassword]     = useState('');
+  const [confirm, setConfirm]       = useState('');
+  const [showPwd, setShowPwd]       = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState('');
+  const [success, setSuccess]       = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // Lire les params depuis l'URL si route.params est vide
   useEffect(() => {
     if (email && token) { setParamsReady(true); return; }
 
     const extractParams = (url) => {
       if (!url) return;
       try {
-        // Supporte remine://reset-password?token=...&email=...
-        // et https://remine-dashboard.vercel.app/reset-password?token=...&email=...
-        const queryString = url.includes('?') ? url.split('?')[1] : '';
-        const params = {};
-        queryString.split('&').forEach(pair => {
+        const qs = url.includes('?') ? url.split('?')[1] : '';
+        const p = {};
+        qs.split('&').forEach(pair => {
           const [k, v] = pair.split('=');
-          if (k && v) params[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' '));
+          if (k && v) p[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' '));
         });
-        if (params.token) setToken(params.token);
-        if (params.email) setEmail(params.email);
-        if (params.token && params.email) setParamsReady(true);
-      } catch {}
+        if (p.token) setToken(p.token);
+        if (p.email) setEmail(p.email);
+        if (p.token && p.email) setParamsReady(true);
+        else setParamsReady(true); // on avance même si vide → affichera "lien invalide"
+      } catch { setParamsReady(true); }
     };
 
-    // URL d'ouverture initiale (app fermée → ouverte via le lien)
     Linking.getInitialURL().then(url => {
       if (url) extractParams(url);
-      else setParamsReady(true); // pas d'URL → affiche "lien invalide"
+      else setParamsReady(true);
     });
 
-    // URL reçue si l'app était déjà ouverte
     const sub = Linking.addEventListener('url', ({ url }) => extractParams(url));
     return () => sub?.remove?.();
   }, []);
 
-  const [checking, setChecking]     = useState(true);
-  const [tokenValid, setTokenValid] = useState(null); // null | true | false
-  const [tokenError, setTokenError] = useState('');
-
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm]   = useState('');
-  const [showPwd, setShowPwd]   = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-
-  // Vérifier le token au chargement
+  // Vérifier le token une fois les params prêts
   useEffect(() => {
-    if (!paramsReady) return; // attendre que les params soient lus
-
+    if (!paramsReady) return;
     let active = true;
     (async () => {
       if (!email || !token) {
-        if (active) {
-          setTokenValid(false);
-          setTokenError('Lien invalide : informations manquantes.');
-          setChecking(false);
-        }
+        if (active) { setTokenValid(false); setTokenError('Lien invalide : informations manquantes.'); setChecking(false); }
         return;
       }
-      const res = await verifyResetToken(email, token);
+      const res = await apiVerifyToken(email, token);
       if (!active) return;
-      if (res.success) {
-        setTokenValid(true);
-      } else {
-        setTokenValid(false);
-        setTokenError(res.error || 'Lien invalide ou expiré.');
-      }
+      if (res.success) { setTokenValid(true); }
+      else { setTokenValid(false); setTokenError(res.error || 'Lien invalide ou expiré.'); }
       setChecking(false);
     })();
     return () => { active = false; };
-  }, [email, token, paramsReady]);
+  }, [paramsReady, email, token]);
 
   const rules = {
     length: password.length >= 8,
@@ -149,156 +109,149 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    setLoading(true);
-    setError('');
-    const res = await confirmPasswordReset(email, token, password);
+    setLoading(true); setError('');
+    const res = await apiConfirmReset(email, token, password);
     setLoading(false);
-    if (res.success) {
-      setSuccess(true);
-      setSuccessMsg(res.message || 'Mot de passe réinitialisé avec succès.');
-    } else {
-      setError(res.error || 'Une erreur est survenue.');
-    }
+    if (res.success) { setSuccess(true); setSuccessMsg(res.message || 'Mot de passe réinitialisé avec succès.'); }
+    else { setError(res.error || 'Une erreur est survenue.'); }
   };
 
-  // ── État : lecture de l'URL en cours ──────────────────────────────────────
+  const goToLogin = () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+
+  // Loading
   if (!paramsReady || checking) {
     return (
-      <View style={styles.centerContent}>
+      <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>
-          {!paramsReady ? 'Lecture du lien…' : 'Vérification du lien…'}
-        </Text>
+        <Text style={styles.loadingText}>{!paramsReady ? 'Lecture du lien…' : 'Vérification du lien…'}</Text>
       </View>
     );
   }
 
-  // ── État : lien invalide / expiré ──────────────────────────────────────────
+  // Lien invalide
   if (tokenValid === false) {
     return (
-      <View style={styles.centerContent}>
-        <Text style={styles.successIcon}>⚠️</Text>
-        <Text style={styles.successTitle}>Lien invalide</Text>
-        <Text style={styles.successText}>
-          {tokenError}{'\n\n'}Veuillez refaire une demande de réinitialisation depuis l'écran de connexion.
-        </Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
-        >
-          <Text style={styles.buttonText}>Retour à la connexion</Text>
+      <View style={styles.center}>
+        <Text style={styles.bigIcon}>⚠️</Text>
+        <Text style={styles.errorTitle}>Lien invalide</Text>
+        <Text style={styles.errorSub}>{tokenError}{'\n\n'}Veuillez refaire une demande depuis l'écran de connexion.</Text>
+        <TouchableOpacity style={styles.btn} onPress={goToLogin}>
+          <Text style={styles.btnText}>Retour à la connexion</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // ── État : succès ───────────────────────────────────────────────────────────
+  // Succès
   if (success) {
     return (
-      <View style={styles.centerContent}>
-        <Text style={styles.successIcon}>✅</Text>
-        <Text style={styles.successTitle}>Mot de passe modifié</Text>
-        <Text style={styles.successText}>
-          {successMsg}{'\n\n'}Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.
-        </Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
-        >
-          <Text style={styles.buttonText}>Aller à la connexion</Text>
+      <View style={styles.center}>
+        <Text style={styles.bigIcon}>✅</Text>
+        <Text style={[styles.errorTitle, { color: colors.primary }]}>Mot de passe modifié</Text>
+        <Text style={styles.errorSub}>{successMsg}{'\n\n'}Vous pouvez maintenant vous connecter.</Text>
+        <TouchableOpacity style={styles.btn} onPress={goToLogin}>
+          <Text style={styles.btnText}>Aller à la connexion</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // ── Formulaire ────────────────────────────────────────────────────────────
+  // Formulaire
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.icon}>🔐</Text>
-          <Text style={styles.title}>Nouveau mot de passe</Text>
-          <Text style={styles.subtitle}>
-            Choisissez un nouveau mot de passe pour{'\n'}
-            <Text style={styles.emailHighlight}>{email}</Text>
-          </Text>
+          <Text style={styles.bigIcon}>🔐</Text>
+          <Text style={[styles.errorTitle, { color: colors.primary }]}>Nouveau mot de passe</Text>
+          <Text style={styles.errorSub}>Pour le compte <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{email}</Text></Text>
         </View>
 
         <View style={styles.form}>
           {!!error && (
             <View style={styles.errorBox}>
-              <Text style={styles.errorIcon}>⚠️</Text>
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>⚠️ {error}</Text>
             </View>
           )}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nouveau mot de passe</Text>
-            <View style={styles.inputWrap}>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={colors.textSecondary}
-                secureTextEntry={!showPwd}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity style={styles.toggleBtn} onPress={() => setShowPwd(!showPwd)}>
-                <Text style={styles.toggleText}>{showPwd ? '🙈' : '👁️'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirmer le mot de passe</Text>
+          <Text style={styles.label}>Nouveau mot de passe</Text>
+          <View style={styles.inputWrap}>
             <TextInput
-              style={[styles.input, { paddingRight: 14 }]}
-              value={confirm}
-              onChangeText={setConfirm}
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
               placeholder="••••••••"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry={!showPwd}
               autoCapitalize="none"
               autoCorrect={false}
             />
+            <TouchableOpacity onPress={() => setShowPwd(!showPwd)} style={styles.toggleBtn}>
+              <Text style={{ fontSize: 18 }}>{showPwd ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
           </View>
 
+          <Text style={[styles.label, { marginTop: 12 }]}>Confirmer le mot de passe</Text>
+          <TextInput
+            style={[styles.input, { paddingRight: 14 }]}
+            value={confirm}
+            onChangeText={setConfirm}
+            placeholder="••••••••"
+            placeholderTextColor={colors.textSecondary}
+            secureTextEntry={!showPwd}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
           <View style={styles.rules}>
-            <View style={styles.rule}>
-              <Text style={styles.ruleIcon}>{rules.length ? '✅' : '⭕'}</Text>
-              <Text style={[styles.ruleText, rules.length && styles.ruleTextOk]}>Au moins 8 caractères</Text>
-            </View>
-            <View style={styles.rule}>
-              <Text style={styles.ruleIcon}>{rules.match ? '✅' : '⭕'}</Text>
-              <Text style={[styles.ruleText, rules.match && styles.ruleTextOk]}>Les mots de passe correspondent</Text>
-            </View>
+            <Text style={[styles.rule, rules.length && { color: colors.primary }]}>
+              {rules.length ? '✅' : '⭕'} Au moins 8 caractères
+            </Text>
+            <Text style={[styles.rule, rules.match && { color: colors.primary }]}>
+              {rules.match ? '✅' : '⭕'} Les mots de passe correspondent
+            </Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.button, !canSubmit && styles.buttonDisabled]}
+            style={[styles.btn, !canSubmit && styles.btnDisabled]}
             onPress={handleSubmit}
             disabled={!canSubmit}
           >
-            {loading ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : (
-              <Text style={styles.buttonText}>Réinitialiser le mot de passe</Text>
-            )}
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Réinitialiser le mot de passe</Text>
+            }
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
-          >
-            <Text style={styles.secondaryBtnText}>Annuler</Text>
+          <TouchableOpacity style={styles.cancelBtn} onPress={goToLogin}>
+            <Text style={styles.cancelText}>Annuler</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const makeStyles = (colors) => StyleSheet.create({
+  container:   { flex: 1, backgroundColor: colors.background },
+  scroll:      { flexGrow: 1, padding: 24, justifyContent: 'center' },
+  center:      { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: colors.background },
+  loadingText: { marginTop: 12, fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+  bigIcon:     { fontSize: 52, marginBottom: 14, textAlign: 'center' },
+  errorTitle:  { fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 10, color: colors.textPrimary },
+  errorSub:    { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 28 },
+  header:      { alignItems: 'center', marginBottom: 24 },
+  form:        { backgroundColor: colors.surface, padding: 22, borderRadius: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 },
+  label:       { fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginBottom: 7, textTransform: 'uppercase', letterSpacing: 0.5 },
+  inputWrap:   { position: 'relative' },
+  input:       { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, padding: 13, paddingRight: 48, fontSize: 15, color: colors.textPrimary },
+  toggleBtn:   { position: 'absolute', right: 12, top: 10 },
+  rules:       { marginTop: 12, marginBottom: 18, gap: 6 },
+  rule:        { fontSize: 13, color: colors.textSecondary },
+  errorBox:    { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10, padding: 12, marginBottom: 14 },
+  errorText:   { color: '#dc2626', fontSize: 13 },
+  btn:         { backgroundColor: colors.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 4, shadowColor: colors.primary, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 4 },
+  btnDisabled: { backgroundColor: colors.border, shadowOpacity: 0, elevation: 0 },
+  btnText:     { color: '#fff', fontSize: 15, fontWeight: '700' },
+  cancelBtn:   { padding: 13, alignItems: 'center', marginTop: 8 },
+  cancelText:  { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+});

@@ -326,31 +326,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const verifyResetToken = async (email, token) => {
-    try {
-      const response = await api.get('/auth/verify-reset-token', { params: { email, token } });
-      if (response.data?.success) return { success: true };
-      return { success: false, error: response.data?.error || 'Lien invalide ou expiré.' };
-    } catch (error) {
-      return { success: false, error: error.response?.data?.error || 'Lien invalide ou expiré.' };
-    }
-  };
-
-  const confirmPasswordReset = async (email, token, newPassword) => {
-    try {
-      if (!newPassword || newPassword.length < 8) {
-        return { success: false, error: 'Le mot de passe doit contenir au moins 8 caractères.' };
-      }
-      const response = await api.post('/auth/confirm-reset-password', { email, token, newPassword });
-      if (response.data?.success) {
-        return { success: true, message: response.data.message || 'Mot de passe réinitialisé avec succès.' };
-      }
-      return { success: false, error: response.data?.error || 'Erreur lors de la réinitialisation.' };
-    } catch (error) {
-      return { success: false, error: error.response?.data?.error || 'Erreur de connexion au serveur.' };
-    }
-  };
-
   // ==================== DÉCONNEXION ====================
 
   const logout = async () => {
@@ -405,8 +380,6 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     resetPassword,
-    verifyResetToken,
-    confirmPasswordReset,
     refreshSession,
     isAuthenticated: !!user,
   };
