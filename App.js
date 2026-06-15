@@ -60,7 +60,7 @@ LogBox.ignoreLogs([
 // Le lien web https://remine-dashboard.vercel.app/reset-password redirige
 // automatiquement vers ce schéma sur mobile, avec fallback web sinon.
 const linking = {
-  prefixes: ['remine://', 'https://remine-dashboard.vercel.app'],
+  prefixes: ['remine://'],
   config: {
     screens: {
       ResetPassword: {
