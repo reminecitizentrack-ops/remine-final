@@ -329,12 +329,9 @@ export const AuthProvider = ({ children }) => {
   const verifyResetToken = async (email, token) => {
     try {
       const response = await api.get('/auth/verify-reset-token', { params: { email, token } });
-      if (response.data?.success) {
-        return { success: true };
-      }
+      if (response.data?.success) return { success: true };
       return { success: false, error: response.data?.error || 'Lien invalide ou expiré.' };
     } catch (error) {
-      logger.error('Erreur verify reset token', error);
       return { success: false, error: error.response?.data?.error || 'Lien invalide ou expiré.' };
     }
   };
@@ -346,12 +343,10 @@ export const AuthProvider = ({ children }) => {
       }
       const response = await api.post('/auth/confirm-reset-password', { email, token, newPassword });
       if (response.data?.success) {
-        logger.info('Mot de passe réinitialisé avec succès');
         return { success: true, message: response.data.message || 'Mot de passe réinitialisé avec succès.' };
       }
       return { success: false, error: response.data?.error || 'Erreur lors de la réinitialisation.' };
     } catch (error) {
-      logger.error('Erreur confirm password reset', error);
       return { success: false, error: error.response?.data?.error || 'Erreur de connexion au serveur.' };
     }
   };
