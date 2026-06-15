@@ -340,15 +340,6 @@ function AppNavigator() {
       {isAuthenticated ? (
         // Écrans pour utilisateurs connectés
         <>
-          <Stack.Screen
-            name="ResetPassword"
-            component={ResetPasswordScreen}
-            options={{
-              title: 'Réinitialisation',
-              ...dynHeaders.green,
-              headerShown: true,
-            }}
-          />
           <Stack.Screen 
             name="HomeTabs" 
             component={TabNavigator}
@@ -448,19 +439,15 @@ function AppNavigator() {
             component={NotificationHistoryScreen}
             options={{ title: 'Notifications', ...dynHeaders.green, animation: 'slide_from_right', animationDuration: 250 }}
           />
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ title: 'Réinitialisation', ...dynHeaders.green, headerShown: true }}
+          />
         </>
       ) : (
         // Écrans pour utilisateurs non connectés
         <>
-          <Stack.Screen
-            name="ResetPassword"
-            component={ResetPasswordScreen}
-            options={{
-              title: 'Réinitialisation',
-              ...dynHeaders.green,
-              headerShown: true,
-            }}
-          />
           <Stack.Screen 
             name="Login" 
             component={LoginScreen}
@@ -505,6 +492,11 @@ function AppNavigator() {
               ...dynHeaders.orange,
               headerShown: true,
             }}
+          />
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ title: 'Réinitialisation', ...dynHeaders.green, headerShown: true }}
           />
         </>
       )}
