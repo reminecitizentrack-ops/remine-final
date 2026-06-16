@@ -632,7 +632,7 @@ export default function App() {
       <AuthProvider>
         <NotificationProvider>
           <SignalementProvider>
-            <NavigationContainer linking={linking}>
+            <NavigationContainer>
               <StatusBar style="auto" backgroundColor="#16a34a" />
               <RootNavigator />
             </NavigationContainer>
