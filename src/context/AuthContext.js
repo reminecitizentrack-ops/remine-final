@@ -1,12 +1,23 @@
 // src/context/AuthContext.js — VERSION CORRIGÉE
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
-import { authService } from '../services/auth';
+// authService est importé dynamiquement (lazy) dans getAuthService() ci-dessous
+// pour éviter tout problème de cycle de modules au chargement initial.
 import NetInfo from '@react-native-community/netinfo';
 import { testBackendConnection } from '../services/api';
 import api, { secureStorage } from '../services/api';
 import { validateInput, SECURE_CONFIG } from '../config/secureConfig';
 import { logger } from '../utils/secureLogger';
+
+// authService est chargé en différé (lazy) pour éviter tout problème de
+// cycle de modules au démarrage qui rendrait l'objet `undefined`.
+let _authServiceCache = null;
+function getAuthService() {
+  if (!_authServiceCache) {
+    _authServiceCache = require('../services/auth').authService;
+  }
+  return _authServiceCache;
+}
 
 // ==================== CONFIGURATION ====================
 
@@ -142,7 +153,7 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = useCallback(async () => {
     try {
       logger.info('Vérification du statut d\'authentification...');
-      const userData = await authService.getCurrentUser();
+      const userData = await getAuthService().getCurrentUser();
 
       if (userData?.success && userData.user) {
         setUser(userData.user);
@@ -218,7 +229,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Mot de passe trop faible' };
       }
 
-      const result = await authService.login(email, password);
+      const result = await getAuthService().login(email, password);
 
       if (result.success && result.data?.user) {
         setUser(result.data.user);
@@ -228,7 +239,7 @@ export const AuthProvider = ({ children }) => {
         logger.info('Connexion réussie');
         return { success: true, user: result.data.user, message: 'Connexion réussie' };
       } else {
-        await authService.clearAuthData();
+        await getAuthService().clearAuthData();
         loginAttemptsRef.current++;
 
         if (loginAttemptsRef.current >= MAX_LOGIN_ATTEMPTS) {
@@ -245,7 +256,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       logger.error('Erreur login AuthContext', error);
-      await authService.clearAuthData();
+      await getAuthService().clearAuthData();
       return { success: false, error: error.message || 'Erreur de connexion au serveur' };
     } finally {
       setIsLoading(false);
@@ -269,7 +280,7 @@ export const AuthProvider = ({ children }) => {
       const optimizedData = optimizeRegisterData(userData);
 
       const result = await callApiWithRetry(
-        () => authService.register(optimizedData),
+        () => getAuthService().register(optimizedData),
         3,
         1000
       );
@@ -280,13 +291,13 @@ export const AuthProvider = ({ children }) => {
         logger.info('Inscription réussie');
         return { success: true, user: result.data.user, message: 'Compte créé avec succès' };
       } else {
-        await authService.clearAuthData();
+        await getAuthService().clearAuthData();
         const errorMessage = result.error || 'Erreur lors de la création du compte';
         return { success: false, error: errorMessage };
       }
     } catch (error) {
       logger.error('Erreur register AuthContext', error);
-      await authService.clearAuthData();
+      await getAuthService().clearAuthData();
 
       let errorMessage = 'Erreur lors de la création du compte';
       if (error.message?.includes('timeout'))             errorMessage = 'Le serveur met trop de temps à répondre. Réessayez dans quelques instants.';
@@ -326,6 +337,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const verifyResetToken = async (email, token) => {
+    try {
+      const response = await api.get('/auth/verify-reset-token', { params: { email, token } });
+      if (response.data?.success) return { success: true };
+      return { success: false, error: response.data?.error || 'Lien invalide ou expiré.' };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.error || 'Lien invalide ou expiré.' };
+    }
+  };
+
+  const confirmPasswordReset = async (email, token, newPassword) => {
+    try {
+      if (!newPassword || newPassword.length < 8) {
+        return { success: false, error: 'Le mot de passe doit contenir au moins 8 caractères.' };
+      }
+      const response = await api.post('/auth/confirm-reset-password', { email, token, newPassword });
+      if (response.data?.success) {
+        return { success: true, message: response.data.message || 'Mot de passe réinitialisé avec succès.' };
+      }
+      return { success: false, error: response.data?.error || 'Erreur lors de la réinitialisation.' };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.error || 'Erreur de connexion au serveur.' };
+    }
+  };
+
   // ==================== DÉCONNEXION ====================
 
   const logout = async () => {
@@ -338,7 +374,7 @@ export const AuthProvider = ({ children }) => {
         // silencieux — on déconnecte localement même si l'API échoue
       }
 
-      await authService.logout();
+      await getAuthService().logout();
       setUser(null);
       setSessionExpiring(false);
       loginAttemptsRef.current = 0;
@@ -348,7 +384,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, message: 'Déconnexion réussie' };
     } catch (error) {
       logger.error('Erreur déconnexion', error);
-      await authService.clearAuthData();
+      await getAuthService().clearAuthData();
       setUser(null);
       return { success: true, message: 'Déconnexion réussie' };
     }
@@ -380,6 +416,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     resetPassword,
+    verifyResetToken,
+    confirmPasswordReset,
     refreshSession,
     isAuthenticated: !!user,
   };
