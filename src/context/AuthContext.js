@@ -1,23 +1,12 @@
 // src/context/AuthContext.js — VERSION CORRIGÉE
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
-// authService est importé dynamiquement (lazy) dans getAuthService() ci-dessous
-// pour éviter tout problème de cycle de modules au chargement initial.
+import { authService } from '../services/auth';
 import NetInfo from '@react-native-community/netinfo';
 import { testBackendConnection } from '../services/api';
 import api, { secureStorage } from '../services/api';
 import { validateInput, SECURE_CONFIG } from '../config/secureConfig';
 import { logger } from '../utils/secureLogger';
-
-// authService est chargé en différé (lazy) pour éviter tout problème de
-// cycle de modules au démarrage qui rendrait l'objet `undefined`.
-let _authServiceCache = null;
-function getAuthService() {
-  if (!_authServiceCache) {
-    _authServiceCache = require('../services/auth').authService;
-  }
-  return _authServiceCache;
-}
 
 // ==================== CONFIGURATION ====================
 
@@ -153,7 +142,7 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = useCallback(async () => {
     try {
       logger.info('Vérification du statut d\'authentification...');
-      const userData = await getAuthService().getCurrentUser();
+      const userData = await authService.getCurrentUser();
 
       if (userData?.success && userData.user) {
         setUser(userData.user);
@@ -229,7 +218,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Mot de passe trop faible' };
       }
 
-      const result = await getAuthService().login(email, password);
+      const result = await authService.login(email, password);
 
       if (result.success && result.data?.user) {
         setUser(result.data.user);
@@ -239,7 +228,7 @@ export const AuthProvider = ({ children }) => {
         logger.info('Connexion réussie');
         return { success: true, user: result.data.user, message: 'Connexion réussie' };
       } else {
-        await getAuthService().clearAuthData();
+        await authService.clearAuthData();
         loginAttemptsRef.current++;
 
         if (loginAttemptsRef.current >= MAX_LOGIN_ATTEMPTS) {
@@ -256,7 +245,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       logger.error('Erreur login AuthContext', error);
-      await getAuthService().clearAuthData();
+      await authService.clearAuthData();
       return { success: false, error: error.message || 'Erreur de connexion au serveur' };
     } finally {
       setIsLoading(false);
@@ -280,7 +269,7 @@ export const AuthProvider = ({ children }) => {
       const optimizedData = optimizeRegisterData(userData);
 
       const result = await callApiWithRetry(
-        () => getAuthService().register(optimizedData),
+        () => authService.register(optimizedData),
         3,
         1000
       );
@@ -291,13 +280,13 @@ export const AuthProvider = ({ children }) => {
         logger.info('Inscription réussie');
         return { success: true, user: result.data.user, message: 'Compte créé avec succès' };
       } else {
-        await getAuthService().clearAuthData();
+        await authService.clearAuthData();
         const errorMessage = result.error || 'Erreur lors de la création du compte';
         return { success: false, error: errorMessage };
       }
     } catch (error) {
       logger.error('Erreur register AuthContext', error);
-      await getAuthService().clearAuthData();
+      await authService.clearAuthData();
 
       let errorMessage = 'Erreur lors de la création du compte';
       if (error.message?.includes('timeout'))             errorMessage = 'Le serveur met trop de temps à répondre. Réessayez dans quelques instants.';
@@ -374,7 +363,7 @@ export const AuthProvider = ({ children }) => {
         // silencieux — on déconnecte localement même si l'API échoue
       }
 
-      await getAuthService().logout();
+      await authService.logout();
       setUser(null);
       setSessionExpiring(false);
       loginAttemptsRef.current = 0;
@@ -384,7 +373,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, message: 'Déconnexion réussie' };
     } catch (error) {
       logger.error('Erreur déconnexion', error);
-      await getAuthService().clearAuthData();
+      await authService.clearAuthData();
       setUser(null);
       return { success: true, message: 'Déconnexion réussie' };
     }
