@@ -20,7 +20,7 @@ const STATUS_LABELS = {
 };
 
 const getPlatforms = (colors) => [
-  { id: 'native',    label: 'Partager',     Icon: Ionicons,             iconName: 'share-social',     color: colors.textPrimary, bg: '#f3f4f6' },
+  { id: 'native',    label: 'Partager',     Icon: Ionicons,             iconName: 'share-social',     color: '#374151',          bg: '#f3f4f6' },
   { id: 'whatsapp',  label: 'WhatsApp',     Icon: FontAwesome5,         iconName: 'whatsapp',         color: '#25D366',          bg: '#f0fdf4' },
   { id: 'facebook',  label: 'Facebook',     Icon: FontAwesome5,         iconName: 'facebook',         color: '#1877F2',          bg: '#eff6ff' },
   { id: 'twitter',   label: 'X (Twitter)',  Icon: FontAwesome5,         iconName: 'twitter',          color: '#000000',          bg: '#f9fafb' },
