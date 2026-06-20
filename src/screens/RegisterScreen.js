@@ -13,6 +13,13 @@ const createStyles = (colors) => StyleSheet.create({
   inputGroup:    { marginBottom: 18 },
   label:         { fontSize: 13, fontWeight: '600', marginBottom: 7, color: colors.textPrimary, letterSpacing: 0.2 },
   input:         { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, padding: 14, fontSize: 15, color: colors.textPrimary },
+  pwdInputWrap:  { position: 'relative' },
+  pwdInput:      { paddingRight: 46 },
+  pwdToggle:     { position: 'absolute', right: 10, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 6 },
+  pwdRules:      { marginTop: 8, gap: 5 },
+  pwdRuleRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  pwdRuleIcon:   { fontSize: 13 },
+  pwdRuleText:   { fontSize: 12, fontWeight: '500' },
   inputError:    { borderColor: colors.danger, backgroundColor: colors.dangerLight },
   inputValid:    { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   errorText:     { color: colors.danger, fontSize: 12, marginTop: 4, marginLeft: 2 },
@@ -50,6 +57,8 @@ export default function RegisterScreen({ navigation }) {
   });
   const [errors, setErrors] = useState({});
   const [isFormValid, setIsFormValid] = useState(false);
+  const [showPwd, setShowPwd]         = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const { register, isLoading } = useAuth();
 
   // Validation en temps réel
@@ -69,8 +78,8 @@ export default function RegisterScreen({ navigation }) {
       errors.email = 'Format d\'email invalide';
     }
     
-    if (!formData.password || formData.password.length < 6) {
-      errors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+    if (!formData.password || formData.password.length < 8) {
+      errors.password = 'Le mot de passe doit contenir au moins 8 caractères';
     }
     
     if (!formData.confirmPassword || formData.password !== formData.confirmPassword) {
@@ -187,8 +196,8 @@ export default function RegisterScreen({ navigation }) {
               firstName: 'Jean',
               lastName: 'Dupont', // ← Maintenant obligatoire
               email: 'jean.dupont@email.com',
-              password: 'demo123',
-              confirmPassword: 'demo123',
+              password: 'demo1234',
+              confirmPassword: 'demo1234',
               community: 'Dakar',
               phone: '+221 77 123 45 67'
             });
@@ -204,8 +213,8 @@ export default function RegisterScreen({ navigation }) {
       firstName: 'Test',
       lastName: 'User', // ← Maintenant obligatoire
       email: 'test@remine.com',
-      password: 'test123',
-      confirmPassword: 'test123',
+      password: 'test1234',
+      confirmPassword: 'test1234',
       community: 'Test Community',
       phone: '+221 70 000 00 00'
     });
@@ -309,42 +318,76 @@ export default function RegisterScreen({ navigation }) {
           {/* Mot de passe */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mot de passe *</Text>
-            <TextInput
-              style={[
-                styles.input, 
-                errors.password && styles.inputError,
-                formData.password && !errors.password && styles.inputValid
-              ]}
-              placeholder="Au moins 6 caractères"
-              value={formData.password}
-              onChangeText={(text) => handleChange('password', text)}
-              secureTextEntry
-              autoComplete="password-new"
-              editable={!isLoading}
-            />
+            <View style={styles.pwdInputWrap}>
+              <TextInput
+                style={[
+                  styles.input, 
+                  styles.pwdInput,
+                  errors.password && styles.inputError,
+                  formData.password && !errors.password && styles.inputValid
+                ]}
+                placeholder="Au moins 8 caractères"
+                value={formData.password}
+                onChangeText={(text) => handleChange('password', text)}
+                secureTextEntry={!showPwd}
+                autoCapitalize="none"
+                autoComplete="password-new"
+                editable={!isLoading}
+              />
+              <TouchableOpacity style={styles.pwdToggle} onPress={() => setShowPwd(s => !s)} hitSlop={10}>
+                <Text style={{ fontSize: 17 }}>{showPwd ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            <Text style={styles.helperText}>
-              🔒 Le mot de passe doit contenir au moins 6 caractères
-            </Text>
+
+            {formData.password.length > 0 && (
+              <View style={styles.pwdRules}>
+                <View style={styles.pwdRuleRow}>
+                  <Text style={[styles.pwdRuleIcon, formData.password.length >= 8 && { color: colors.primary }]}>
+                    {formData.password.length >= 8 ? '✅' : '⭕'}
+                  </Text>
+                  <Text style={[styles.pwdRuleText, { color: formData.password.length >= 8 ? colors.primary : colors.textSecondary }]}>
+                    Au moins 8 caractères
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
           
           {/* Confirmation mot de passe */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirmer le mot de passe *</Text>
-            <TextInput
-              style={[
-                styles.input, 
-                errors.confirmPassword && styles.inputError,
-                formData.confirmPassword && !errors.confirmPassword && styles.inputValid
-              ]}
-              placeholder="Retapez votre mot de passe"
-              value={formData.confirmPassword}
-              onChangeText={(text) => handleChange('confirmPassword', text)}
-              secureTextEntry
-              autoComplete="password-new"
-              editable={!isLoading}
-            />
+            <View style={styles.pwdInputWrap}>
+              <TextInput
+                style={[
+                  styles.input, 
+                  styles.pwdInput,
+                  errors.confirmPassword && styles.inputError,
+                  formData.confirmPassword && !errors.confirmPassword && styles.inputValid
+                ]}
+                placeholder="Retapez votre mot de passe"
+                value={formData.confirmPassword}
+                onChangeText={(text) => handleChange('confirmPassword', text)}
+                secureTextEntry={!showConfirmPwd}
+                autoCapitalize="none"
+                autoComplete="password-new"
+                editable={!isLoading}
+              />
+              <TouchableOpacity style={styles.pwdToggle} onPress={() => setShowConfirmPwd(s => !s)} hitSlop={10}>
+                <Text style={{ fontSize: 17 }}>{showConfirmPwd ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
             {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+            {formData.confirmPassword.length > 0 && (
+              <View style={styles.pwdRuleRow}>
+                <Text style={[styles.pwdRuleIcon, formData.password === formData.confirmPassword && { color: colors.primary }]}>
+                  {formData.password === formData.confirmPassword ? '✅' : '⭕'}
+                </Text>
+                <Text style={[styles.pwdRuleText, { color: formData.password === formData.confirmPassword ? colors.primary : colors.textSecondary }]}>
+                  Les mots de passe correspondent
+                </Text>
+              </View>
+            )}
           </View>
           
           {/* Communauté */}
@@ -379,14 +422,16 @@ export default function RegisterScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {/* Bouton démo */}
-          <TouchableOpacity 
-            style={styles.demoButton}
-            onPress={handleQuickDemo}
-            disabled={isLoading}
-          >
-            <Text style={styles.demoText}>🎮 Remplir automatiquement (démo)</Text>
-          </TouchableOpacity>
+          {/* Bouton démo (développement seulement) */}
+          {__DEV__ && (
+            <TouchableOpacity 
+              style={styles.demoButton}
+              onPress={handleQuickDemo}
+              disabled={isLoading}
+            >
+              <Text style={styles.demoText}>🎮 Remplir automatiquement (démo)</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Bouton test rapide (développement seulement) */}
           {__DEV__ && (
