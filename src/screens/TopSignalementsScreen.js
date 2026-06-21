@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Animated, Alert
+  RefreshControl, ActivityIndicator, Animated, Alert, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -16,6 +16,17 @@ const createStyles = (colors) => StyleSheet.create({
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   demoWarning: { marginTop: 6, alignSelf: 'flex-start', backgroundColor: colors.dangerLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   demoWarningText: { fontSize: 11, fontWeight: '700', color: colors.danger },
+  regionRow: { paddingHorizontal: 16, marginBottom: 8 },
+  regionSelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.borderLight },
+  regionSelectorIcon: { fontSize: 15, marginRight: 8 },
+  regionSelectorText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  regionSelectorChevron: { fontSize: 11, color: colors.textSecondary },
+  regionPickerPanel: { marginHorizontal: 16, marginBottom: 10, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden' },
+  regionOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  regionOptionActive: { backgroundColor: colors.primaryLight },
+  regionOptionText: { fontSize: 13, color: colors.textPrimary, fontWeight: '500' },
+  regionOptionTextActive: { color: colors.primary, fontWeight: '700' },
+  regionOptionCount: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
 
   tabs: { flexDirection: 'row', backgroundColor: colors.surface, paddingHorizontal: 12, paddingBottom: 10, paddingTop: 4, gap: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
   tab:         { flex: 1, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.background, alignItems: 'center' },
@@ -202,13 +213,23 @@ export default function TopSignalementsScreen({ navigation }) {
   const [tab, setTab]         = useState('top');
   const [loadError, setLoadError] = useState(false);
 
+  // ── Filtre par région ────────────────────────────────────────────────────
+  const [selectedRegion, setSelectedRegion] = useState(user?.community || 'all');
+  const [availableRegions, setAvailableRegions] = useState([]);
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
+
   const SORT_FIELD = { top: 'voteCount', trending: 'confidenceScore', recent: 'createdAt' };
 
-  const loadReports = useCallback(async (sortKey = 'top') => {
+  const loadReports = useCallback(async (sortKey = 'top', region = 'all') => {
     try {
       setLoadError(false);
       const response = await api.get('/reports/public', {
-        params: { limit: 50, sortBy: SORT_FIELD[sortKey] || 'voteCount', sortOrder: 'desc' },
+        params: {
+          limit: 50,
+          sortBy: SORT_FIELD[sortKey] || 'voteCount',
+          sortOrder: 'desc',
+          ...(region && region !== 'all' ? { region } : {}),
+        },
       });
       const data = response.data?.data?.reports || response.data?.data || [];
 
@@ -232,9 +253,23 @@ export default function TopSignalementsScreen({ navigation }) {
     }
   }, []);
 
+  const loadRegions = useCallback(async () => {
+    try {
+      const response = await api.get('/reports/regions');
+      const regions = response.data?.data?.regions || [];
+      setAvailableRegions(regions);
+    } catch {
+      setAvailableRegions([]);
+    }
+  }, []);
+
   useEffect(() => {
-    loadReports(tab);
-  }, [tab]);
+    loadRegions();
+  }, [loadRegions]);
+
+  useEffect(() => {
+    loadReports(tab, selectedRegion);
+  }, [tab, selectedRegion]);
 
   const handleVote = async (reportId, voteType) => {
     try {
@@ -295,6 +330,47 @@ export default function TopSignalementsScreen({ navigation }) {
         ))}
       </View>
 
+      {/* Sélecteur de région */}
+      <View style={styles.regionRow}>
+        <TouchableOpacity
+          style={styles.regionSelector}
+          onPress={() => setShowRegionPicker(v => !v)}
+        >
+          <Text style={styles.regionSelectorIcon}>📍</Text>
+          <Text style={styles.regionSelectorText}>
+            {selectedRegion === 'all' ? 'Toutes les régions' : selectedRegion}
+          </Text>
+          <Text style={styles.regionSelectorChevron}>{showRegionPicker ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {showRegionPicker && (
+        <View style={styles.regionPickerPanel}>
+          <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
+            <TouchableOpacity
+              style={[styles.regionOption, selectedRegion === 'all' && styles.regionOptionActive]}
+              onPress={() => { setSelectedRegion('all'); setShowRegionPicker(false); }}
+            >
+              <Text style={[styles.regionOptionText, selectedRegion === 'all' && styles.regionOptionTextActive]}>
+                🌍 Toutes les régions
+              </Text>
+            </TouchableOpacity>
+            {availableRegions.map(r => (
+              <TouchableOpacity
+                key={r.name}
+                style={[styles.regionOption, selectedRegion === r.name && styles.regionOptionActive]}
+                onPress={() => { setSelectedRegion(r.name); setShowRegionPicker(false); }}
+              >
+                <Text style={[styles.regionOptionText, selectedRegion === r.name && styles.regionOptionTextActive]}>
+                  📍 {r.name}
+                </Text>
+                <Text style={styles.regionOptionCount}>{r.count}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {sorted.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>📭</Text>
@@ -318,7 +394,7 @@ export default function TopSignalementsScreen({ navigation }) {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); loadReports(tab); }}
+              onRefresh={() => { setRefreshing(true); loadReports(tab, selectedRegion); }}
               colors={['#16a34a']}
               tintColor="#16a34a"
             />
