@@ -14,6 +14,8 @@ const createStyles = (colors) => StyleSheet.create({
   header: { paddingHorizontal: 16, paddingVertical: 14, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
   title:  { fontSize: 20, fontWeight: '800', color: colors.textPrimary },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  demoWarning: { marginTop: 6, alignSelf: 'flex-start', backgroundColor: colors.dangerLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  demoWarningText: { fontSize: 11, fontWeight: '700', color: colors.danger },
 
   tabs: { flexDirection: 'row', backgroundColor: colors.surface, paddingHorizontal: 12, paddingBottom: 10, paddingTop: 4, gap: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
   tab:         { flex: 1, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.background, alignItems: 'center' },
@@ -197,35 +199,33 @@ export default function TopSignalementsScreen({ navigation }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState('top');
+  const [tab, setTab]         = useState('top');
+  const [loadError, setLoadError] = useState(false);
 
-  const loadReports = useCallback(async () => {
+  const SORT_FIELD = { top: 'voteCount', trending: 'confidenceScore', recent: 'createdAt' };
+
+  const loadReports = useCallback(async (sortKey = 'top') => {
     try {
-      // Essayer d'abord /reports/mine (qui fonctionne)
-      const response = await api.get('/reports/mine');
-      let data = response.data?.data || response.data || [];
-      
+      setLoadError(false);
+      const response = await api.get('/reports/public', {
+        params: { limit: 50, sortBy: SORT_FIELD[sortKey] || 'voteCount', sortOrder: 'desc' },
+      });
+      const data = response.data?.data?.reports || response.data?.data || [];
+
       if (Array.isArray(data) && data.length > 0) {
         setReports(data);
       } else {
-        // Fallback vers /reports (tous les signalements)
-        const allResponse = await api.get('/reports?limit=50');
-        const allData = allResponse.data?.data?.reports || allResponse.data?.data || [];
-        setReports(Array.isArray(allData) ? allData : DEMO_REPORTS);
+        setReports([]);
       }
     } catch (error) {
-      console.log('❌ Erreur chargement signalements:', error.message);
-      
-      // Fallback: données de démonstration
+      console.log('❌ Erreur chargement classement public:', error.message);
       setReports(DEMO_REPORTS);
-      
-      if (error.status === 500) {
-        Alert.alert(
-          '⚠️ Service temporaire',
-          'Le classement utilise des données de démonstration. Les votes seront disponibles plus tard.',
-          [{ text: 'OK' }]
-        );
-      }
+      setLoadError(true);
+      Alert.alert(
+        '⚠️ Connexion impossible',
+        'Le classement affiché ci-dessous utilise des données de démonstration. Vérifiez votre connexion et réessayez.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -233,8 +233,8 @@ export default function TopSignalementsScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    loadReports();
-  }, [loadReports]);
+    loadReports(tab);
+  }, [tab]);
 
   const handleVote = async (reportId, voteType) => {
     try {
@@ -255,11 +255,8 @@ export default function TopSignalementsScreen({ navigation }) {
     }
   };
 
-  const sorted = [...reports].sort((a, b) => {
-    if (tab === 'top') return (b.voteCount || 0) - (a.voteCount || 0);
-    if (tab === 'trending') return (b.confidenceScore || 0) - (a.confidenceScore || 0);
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
+  // Le tri est désormais fait côté serveur via le paramètre sortBy (voir loadReports)
+  const sorted = reports;
 
   if (loading) {
     return (
@@ -275,6 +272,11 @@ export default function TopSignalementsScreen({ navigation }) {
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.borderLight }]}>
         <Text style={styles.title}>🏆 Top Signalements</Text>
         <Text style={styles.subtitle}>{reports.length} signalement{reports.length > 1 ? 's' : ''}</Text>
+        {loadError && (
+          <View style={styles.demoWarning}>
+            <Text style={styles.demoWarningText}>⚠️ Données de démonstration (hors ligne)</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.tabs}>
@@ -316,7 +318,7 @@ export default function TopSignalementsScreen({ navigation }) {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); loadReports(); }}
+              onRefresh={() => { setRefreshing(true); loadReports(tab); }}
               colors={['#16a34a']}
               tintColor="#16a34a"
             />
