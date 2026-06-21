@@ -1,0 +1,79 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "yes": "Yes",
+    "no": "No",
+    "retry": "Retry",
+    "search": "Search",
+    "filter": "Filter"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "No account?",
+    "hasAccount": "Already have an account?",
+    "loginSuccess": "Login successful",
+    "registerSuccess": "Registration successful",
+    "logout": "Logout"
+  },
+  "reports": {
+    "title": "Reports",
+    "new": "New report",
+    "type": "Pollution type",
+    "description": "Description",
+    "location": "Location",
+    "severity": "Severity",
+    "photos": "Photos",
+    "submit": "Submit",
+    "status": {
+      "new": "New",
+      "verified": "Verified",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "rejected": "Rejected"
+    },
+    "severityLevels": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    }
+  },
+  "map": {
+    "title": "Map",
+    "markers": "Reports",
+    "nearby": "Nearby reports"
+  },
+  "profile": {
+    "title": "Profile",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "phone": "Phone",
+    "community": "Community",
+    "stats": "My stats",
+    "reportsCount": "Reports",
+    "votesReceived": "Votes received"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "enabled": "Notifications enabled",
+    "disabled": "Notifications disabled",
+    "test": "Test notification",
+    "settings": "Settings"
+  },
+  "errors": {
+    "network": "Network error",
+    "server": "Server error",
+    "unauthorized": "Unauthorized",
+    "notFound": "Not found",
+    "unknown": "Unknown error"
+  }
+}

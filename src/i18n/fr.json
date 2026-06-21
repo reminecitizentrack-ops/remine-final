@@ -1,0 +1,79 @@
+{
+  "common": {
+    "welcome": "Bienvenue",
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "yes": "Oui",
+    "no": "Non",
+    "retry": "Réessayer",
+    "search": "Rechercher",
+    "filter": "Filtrer"
+  },
+  "auth": {
+    "login": "Connexion",
+    "register": "Inscription",
+    "email": "Email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "noAccount": "Pas de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "loginSuccess": "Connexion réussie",
+    "registerSuccess": "Inscription réussie",
+    "logout": "Déconnexion"
+  },
+  "reports": {
+    "title": "Signalements",
+    "new": "Nouveau signalement",
+    "type": "Type de pollution",
+    "description": "Description",
+    "location": "Localisation",
+    "severity": "Gravité",
+    "photos": "Photos",
+    "submit": "Envoyer",
+    "status": {
+      "new": "Nouveau",
+      "verified": "Vérifié",
+      "in_progress": "En cours",
+      "resolved": "Résolu",
+      "rejected": "Rejeté"
+    },
+    "severityLevels": {
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé",
+      "critical": "Critique"
+    }
+  },
+  "map": {
+    "title": "Carte",
+    "markers": "Signalements",
+    "nearby": "Signalements à proximité"
+  },
+  "profile": {
+    "title": "Profil",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "phone": "Téléphone",
+    "community": "Communauté",
+    "stats": "Mes statistiques",
+    "reportsCount": "Signalements",
+    "votesReceived": "Votes reçus"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "enabled": "Notifications activées",
+    "disabled": "Notifications désactivées",
+    "test": "Notification test",
+    "settings": "Paramètres"
+  },
+  "errors": {
+    "network": "Erreur de connexion",
+    "server": "Erreur serveur",
+    "unauthorized": "Non autorisé",
+    "notFound": "Non trouvé",
+    "unknown": "Erreur inconnue"
+  }
+}
