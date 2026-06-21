@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const createStyles = (colors) => StyleSheet.create({
   safe:   { flex: 1 },
@@ -327,8 +328,8 @@ export default function ProfileScreen({ navigation }) {
                 </View>
               ))}
 
-              {/* Communauté */}
-              <Text style={styles.fieldLabel}>Communauté</Text>
+              {/* Région */}
+              <Text style={styles.fieldLabel}>Région</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                 {COMMUNITIES.map(c => (
                   <TouchableOpacity key={c}
@@ -350,7 +351,7 @@ export default function ProfileScreen({ navigation }) {
                 { label: 'Nom',         value: user?.lastName  },
                 { label: 'Email',       value: user?.email     },
                 { label: 'Téléphone',   value: user?.phone || 'Non renseigné' },
-                { label: 'Communauté',  value: user?.community || 'Non renseignée' },
+                { label: 'Région',      value: user?.community || 'Non renseignée' },
               ].map(i => (
                 <View key={i.label} style={styles.infoRow}>
                   <Text style={styles.infoLabel}>{i.label}</Text>

@@ -390,9 +390,9 @@ export default function RegisterScreen({ navigation }) {
             )}
           </View>
           
-          {/* Communauté */}
+          {/* Région */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Communauté (optionnel)</Text>
+            <Text style={styles.label}>Région (optionnel)</Text>
             <TextInput
               style={[
                 styles.input, 
@@ -404,7 +404,7 @@ export default function RegisterScreen({ navigation }) {
               editable={!isLoading}
             />
             <Text style={styles.helperText}>
-              🌍 Indiquez votre ville ou région pour connecter avec votre communauté locale
+              🌍 Indiquez votre région pour des alertes locales pertinentes
             </Text>
           </View>
           
