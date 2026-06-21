@@ -12,7 +12,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useNotification } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const createStyles = (colors) => StyleSheet.create({
   safe:   { flex: 1 },
